@@ -1,5 +1,8 @@
+from gnuradio import gr  
 import numpy as np
+import matplotlib.pyplot as plt
 import scipy
+from StringIO import StringIO
 import time
 import logging
 import os
@@ -38,7 +41,7 @@ def main():
     file_list.sort()
 
     #latest files for quick look
-    latestFiles = [ file_list[-4] , file_list[-3], file_list[-2] , file_list[-1] ]
+    self.latestFiles = [ file_list[-4] , file_list[-3], file_list[-2] , file_list[-1] ]
 
     for files in file_list:
         datetime_temp = datetime.strptime( files[6:12] + files[13:19] , '%y%m%d%H%M%S' )
@@ -65,7 +68,7 @@ def main():
     winSec = 60
     sample_rate = 1e6
     samp_rate = int(sample_rate/2)     #i and q channels are 1/2 complex rate
-    self.num_channels = 2
+    num_channels = 2
     startpoint = startSec * samp_rate   #set startpoint in file
     endpoint = (endSec-startSec) * samp_rate       #set endpoint in file
     fileName = filePath                #set file path
@@ -76,59 +79,81 @@ def main():
     fileobj2 = open(fileName[1])
     jcount = 0
     count = 0
-    chunk_size = win_size*16 #reads 200K steps into file = 200ms
-    header_array = ["V1", "C2", "V3", "C4"] 
-    out_array = [ [] ]
+    chunk_size = self.win_size*16 #reads 200K steps into file = 200ms
 
-    while count < 60:
+    while count < self.endpoint/self.win_size:
         chunk = fileobj.read( chunk_size ) 
         chunk2 = fileobj2.read( chunk_size )
         Data = np.reshape( np.frombuffer(chunk, dtype=scipy.complex64), (-1, 1))#self.num_channels))
         Data2 = np.reshape( np.frombuffer(chunk2, dtype=scipy.complex64), (-1, 1))#self.num_channels))
         #print Data
-        print len(Data)
-        print len(Data2)
 
-        #count = count+1 
-        count = 60
-        
-        down1 = downsample_to_proportion(Data, .001)
-        down2 = downsample_to_proportion(Data2, .001)
-        print len(down1)
-        print len(down2)
-
-       #out_array = [down1.real, down1.imag, down2.real, down2.imag] 
-       #print len(out_array)
-       #out_array[0].append(down1.real)
-       #out_array[1].append(down1.imag)
-       #out_array[2].append(down2.real)
-       #out_array[3].append(down2.imag)
-
+        count = count+1 
 
     raw_input("press any key to exit")
 
-'''
+
 def chunk(self, fObject):
     while True:
         segment = fObject.read( int(self.win_size*16) )
         yield segment
-'''
 
-def downsample_to_proportion(self, rows, proportion):
-    
-    counter = 0.0
-    last_counter = None
-    results = []
 
-    for row in rows:
+def scope_data(self, Data, Data2):
+    #dat1 = Data.real[:,0]
+    dat1 = Data.real
+    dat2 = Data.imag
+    #dat3 = np.fft.fft(Data)
+    dat3 = Data2.real
+    dat4 = Data2.imag
+    #dat2 = Data.imag[:,0]
+    if not hasattr(self, "run_once"):
+        self.run_once = True
+        x = np.arange( 0, len(dat1) )
+        self.line = self.sub.plot(x, dat1)[0]
+        self.line2 = self.sub2.plot(x, dat2)[0]
+        self.line3 = self.sub3.plot(x, dat3)[0]
+        self.line4 = self.sub4.plot(x, dat4)[0]
+        self.sub2.set_title("Line1 Current (C4)")
+        self.sub.set_title("Line1 Voltage (V3)")
+        self.sub4.set_title("Line2 Current (C2)")
+        self.sub3.set_title("Line2 Voltage (V1)")
+        #plt.show()
+    #Data = scipy.fromfile(open(data_piece), dtype=scipy.complex64)
 
-        counter += proportion
 
-        if int(counter) != last_counter:
-            results.append(row)
-            last_counter = int(counter)
+    log.info( "c_binary length: %d" % len(Data) )
+    log.info( "real bin length: %d" % len(dat1) )
+    log.info( "imag bin length: %d" % len(dat2) )
 
-    return results
+    #dat1 = Data.real
+    #dat2 = Data.imag
+
+    x = np.arange(0, len(Data))
+    #print len(x)
+    #import pdb
+    #pdb.set_trace()
+    self.line.set_data(x, dat1 )
+    self.line2.set_data(x, dat2 )
+    self.line3.set_data(x, dat3 )
+    self.line4.set_data(x, dat4 )
+    '''
+    self.sub.relim()
+    self.sub.autoscale_view(True, True, True)
+    self.sub2.relim()
+    self.sub2.autoscale_view(True, True, True)
+    self.sub3.relim()
+    self.sub3.autoscale_view(True, True, True)
+    self.sub4.relim()
+    self.sub4.autoscale_view(True, True, True)
+    '''
+    self.fig.canvas.draw()
+    #plt.plot(Data[1:self.win_size])
+    #plt.plot(dat1[1:self.win_size])
+    #plt.plot(dat2[1:self.win_size])
+    #raw_input('pause')
+    #plt.show()
+    #raw_input('press any key')
 
 main()
 
