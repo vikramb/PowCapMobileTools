@@ -5,18 +5,41 @@ import logging
 import os
 import sys
 from datetime import datetime , timedelta
+import csv
 
 log = logging.getLogger("To File")
 log.setLevel(logging.INFO)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
+
+
+def downsample_to_proportion(rows, proportion):
+    
+    counter = 0.0
+    last_counter = None
+    results = []
+
+    for row in rows:
+
+        counter += proportion
+
+        if int(counter) != last_counter:
+            results.append(row)
+            last_counter = int(counter)
+
+    return results
+
+
+
 def main():
+    path = "/Users/Vikram/Dropbox/PowCapMobile_Experiments/"
+    foundPath = ""
     
     log.info("Searching for files in path "+path)
 
-    for r,d,f in os.walk(self.path):
+    for r,d,f in os.walk(path):
 
-        #print f
+        print f
 
         file_list = f
         
@@ -38,11 +61,11 @@ def main():
     file_list.sort()
 
     #latest files for quick look
-    latestFiles = [ file_list[-4] , file_list[-3], file_list[-2] , file_list[-1] ]
+    #latestFiles = [ file_list[-4] , file_list[-3], file_list[-2] , file_list[-1] ]
 
     for files in file_list:
         datetime_temp = datetime.strptime( files[6:12] + files[13:19] , '%y%m%d%H%M%S' )
-        if self.datetime >= datetime_temp:
+        if datetime >= datetime_temp:
             found_list.append(files)
             #found_list.append( [k for k in f if files[6:18] in k] )
             #file_list.sort() 
@@ -56,19 +79,28 @@ def main():
 
     if len(file_list) == 0:
         log.warning("No file found with requested date")
+
     else:
-        self.foundPath = [ file_list[-2] , file_list[-1] ]
-        log.info("Found data files: %s" % ' , ' .join(map(str,self.foundPath)))
-        self.checkFile()
+        foundPath = [ file_list[-2] , file_list[-1] ]
+        log.info("Found data files: %s" % ' , ' .join(map(str,foundPath)))
+        #checkFile()
 
 
-    winSec = 60
+
+    winSec = 1       #seconds to sample per window
     sample_rate = 1e6
     samp_rate = int(sample_rate/2)     #i and q channels are 1/2 complex rate
-    self.num_channels = 2
-    startpoint = startSec * samp_rate   #set startpoint in file
-    endpoint = (endSec-startSec) * samp_rate       #set endpoint in file
-    fileName = filePath                #set file path
+    num_channels = 2
+    #startpoint = startSec * samp_rate   #set startpoint in file
+    #endpoint = (endSec-startSec) * samp_rate       #set endpoint in file
+    #fileName = foundPath                #set file path
+
+    print f
+    #print path+str(f)
+    fileName = [ path+str(f[0]), path+str(f[0]) ]
+
+    print fileName
+    
     win_size = int( winSec * samp_rate )#set window size in file
     #note, self.samp_rate = 1 second of samples for each channel
 
@@ -78,7 +110,11 @@ def main():
     count = 0
     chunk_size = win_size*16 #reads 200K steps into file = 200ms
     header_array = ["V1", "C2", "V3", "C4"] 
-    out_array = [ [] ]
+    dat1 = []
+    dat2 = []
+    dat3 = []
+    dat4 = []
+    #out_array = [ [] ]
 
     while count < 60:
         chunk = fileobj.read( chunk_size ) 
@@ -92,54 +128,49 @@ def main():
         #count = count+1 
         count = 60
         
-        down1 = downsample_to_proportion(Data, .001)
-        down2 = downsample_to_proportion(Data2, .001)
-        print len(down1)
-        print len(down2)
+        #down1 = downsample_to_proportion(Data, .001)
+        #down2 = downsample_to_proportion(Data2, .001)
+        #print len(down1)
+        #print len(down2)
 
-       #out_array = [down1.real, down1.imag, down2.real, down2.imag] 
-       #print len(out_array)
-       #out_array[0].append(down1.real)
-       #out_array[1].append(down1.imag)
-       #out_array[2].append(down2.real)
-       #out_array[3].append(down2.imag)
+        dat1 = downsample_to_proportion(Data.real, .001)
+        dat2 = downsample_to_proportion(Data.imag, .001)
+        dat3 = downsample_to_proportion(Data2.real, .001)
+        dat4 = downsample_to_proportion(Data2.imag, .001)
+        print len(dat1)
+        print len(dat2)
+        print len(dat3)
+        print len(dat4)
+
+        '''
+        #out_array = [down1.real, down1.imag, down2.real, down2.imag] 
+        #print len(out_array)
+        array1.append(dat1)
+        array2.append(dat2)
+        array3.append(dat3)
+        array4.append(dat4)
+        print len(array1)
+        '''
 
 
-    raw_input("press any key to exit")
+    dat1.insert(0, 'V1')
+    dat2.insert(0, 'C2')
+    dat3.insert(0, 'V3')
+    dat4.insert(0, 'C4')
+    out_array = [dat1, dat2, dat3, dat4]
+    print len(out_array)
+    print len(out_array[0])
 
-'''
-def chunk(self, fObject):
-    while True:
-        segment = fObject.read( int(self.win_size*16) )
-        yield segment
-'''
-
-def downsample_to_proportion(self, rows, proportion):
     
-    counter = 0.0
-    last_counter = None
-    results = []
-
-    for row in rows:
-
-        counter += proportion
-
-        if int(counter) != last_counter:
-            results.append(row)
-            last_counter = int(counter)
-
-    return results
+    pathSave = '/Users/Vikram/Dropbox/PowCapMobile_scripts/tools/other/' 
+    with open(pathSave+'mains'+'.csv', 'w') as writeobj:
+        log.info("Writing to: "+'mains.csv')
+        write_gT = csv.writer(writeobj, 'excel-tab')
+        write_gT.writerows(out_array)
+    
+    raw_input("press any key to exit")
 
 main()
 
-'''
-if __name__ == '__main__':
-    try:
-        fileName = '/home/henry/NeslStore/vikram/powcapData/Jason-Drive/mains_130313_030126-chan_1.dat'
-        start_at_second = 10
-        end_at_second = 15
-        window_second = 200e-3
-        p = ParseData(fileName, start_at_second, end_at_second, window_second)
-    except KeyboardInterrupt:
-        log.info("Exiting")
-'''
+
+
